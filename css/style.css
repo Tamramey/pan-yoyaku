@@ -1,0 +1,151 @@
+/* ============================================
+   パン教室 予約カレンダー スタイルシート
+   テーマ:焼きたてパンの温かさ(クリーム×小麦色×バター色)
+   ============================================ */
+
+:root{
+  --cream:#fdf8ef;      /* 背景のクリーム */
+  --wheat:#8a6d4b;      /* 小麦のこげ茶(文字) */
+  --crust:#c8925a;      /* パンの皮色(アクセント) */
+  --butter:#f5d78e;     /* バター色(予備) */
+  --open:#3f9d6e;       /* 予約可の緑 */
+  --few:#e09b3d;        /* 残りわずかの橙 */
+  --full:#b9b3a9;       /* 満席のグレー */
+  --line:#eadfcc;
+}
+
+*{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+body{
+  margin:0;
+  font-family:"Hiragino Maru Gothic ProN","BIZ UDGothic","Yu Gothic",sans-serif;
+  background:var(--cream);
+  color:var(--wheat);
+}
+
+.wrap{ max-width:760px; margin:0 auto; padding:16px 12px 30px; }
+
+/* ---------- ヘッダー ---------- */
+.site-head{ text-align:center; padding:10px 0 6px; }
+.site-head .logo{ font-size:38px; }
+.site-head h1{ margin:4px 0 6px; font-size:22px; letter-spacing:.05em; }
+.site-head .lead{ font-size:13px; line-height:1.9; color:#a58c6d; margin:0; }
+
+/* ---------- 月ナビ ---------- */
+.cal-nav{
+  display:flex; align-items:center; justify-content:center;
+  gap:18px; margin:16px 0 10px;
+}
+.cal-nav h2{ margin:0; font-size:19px; letter-spacing:.1em; min-width:8em; text-align:center; }
+.nav-btn{
+  width:38px; height:38px; border-radius:50%;
+  border:1.5px solid var(--line); background:#fff;
+  font-size:20px; color:var(--crust); cursor:pointer;
+  transition:.15s;
+}
+.nav-btn:active{ transform:scale(.92); }
+
+/* ---------- 凡例 ---------- */
+.legend{
+  display:flex; justify-content:center; gap:14px;
+  font-size:11px; margin-bottom:10px; flex-wrap:wrap;
+}
+.legend .lg{ display:flex; align-items:center; gap:4px; }
+.dot{ width:10px; height:10px; border-radius:50%; display:inline-block; }
+.dot.open{ background:var(--open); }
+.dot.few{ background:var(--few); }
+.dot.full{ background:var(--full); }
+
+/* ---------- カレンダー ---------- */
+.calendar{
+  background:#fff;
+  border:1.5px solid var(--line);
+  border-radius:14px;
+  overflow:hidden;
+  box-shadow:0 8px 20px rgba(138,109,75,.10);
+}
+
+/* 曜日の行・日付の行、どちらも7列のグリッド */
+.cal-row{
+  display:grid;
+  grid-template-columns:repeat(7, 1fr);
+}
+
+.dow{
+  text-align:center; font-size:11.5px; font-weight:bold;
+  padding:8px 0; background:#f7efe1;
+  border-bottom:1.5px solid var(--line);
+}
+.dow.sun{ color:#c9403a; }
+.dow.sat{ color:#3f6fb4; }
+
+.cell{
+  min-height:74px;
+  border-top:1px solid var(--line);
+  border-left:1px solid var(--line);
+  padding:4px 3px;
+  font-size:11px;
+  position:relative;
+  background:#fff;
+}
+.cell:nth-child(7n+1){ border-left:none; }
+.cell.out{ background:#faf6ee; }          /* 前後の月の日 */
+.cell .d{ font-size:12px; font-weight:bold; }
+.cell.sun .d{ color:#c9403a; }
+.cell.sat .d{ color:#3f6fb4; }
+.cell.today .d{
+  display:inline-block; background:var(--crust); color:#fff;
+  border-radius:50%; width:20px; height:20px; line-height:20px; text-align:center;
+}
+
+/* ---------- レッスン札 ---------- */
+.lesson{
+  margin-top:3px;
+  border-radius:8px;
+  padding:4px 4px 5px;
+  line-height:1.35;
+  text-align:center;
+  cursor:pointer;
+  border:1.5px solid transparent;
+  transition:.15s;
+}
+.lesson .menu{ font-weight:bold; font-size:10.5px; display:block; }
+.lesson .seats{ font-size:9.5px; display:block; margin-top:1px; }
+
+/* 予約可(緑) */
+.lesson.open{
+  background:#e9f6ef; border-color:#bfe3d0; color:#2c7a54;
+}
+.lesson.open:hover{ background:#d7efe2; transform:translateY(-1px); }
+
+/* 残りわずか(橙) */
+.lesson.few{
+  background:#fdf3e2; border-color:#f0d5a8; color:#a86a14;
+}
+.lesson.few:hover{ background:#fae9cd; transform:translateY(-1px); }
+
+/* 満席(グレー・押せない) */
+.lesson.full{
+  background:#f1efeb; border-color:#e0dcd4; color:#9a948a;
+  cursor:not-allowed;
+}
+
+/* ---------- 注記・フッター ---------- */
+.note{ font-size:11px; color:#a58c6d; line-height:1.8; margin:12px 4px; }
+.site-foot{
+  text-align:center; font-size:10.5px; color:#c3ab8d;
+  margin-top:18px;
+}
+
+/* ============================================
+   スマホ対応:画面幅480px以下で余白と文字を微調整
+   7列グリッドは維持したまま、セルをコンパクトに
+   ============================================ */
+@media (max-width:480px){
+  .wrap{ padding:12px 6px 24px; }
+  .site-head h1{ font-size:19px; }
+  .cell{ min-height:64px; padding:3px 2px; }
+  .lesson .menu{ font-size:9px; }
+  .lesson .seats{ font-size:8.5px; }
+  .cal-nav h2{ font-size:17px; }
+}
