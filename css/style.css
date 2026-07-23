@@ -1,4 +1,7 @@
 /* ============================================
+   ★★★ 第3版(フォーム対応版)★★★
+   この行が見えていれば、新しいCSSが届いています
+   --------------------------------------------
    パン教室 予約カレンダー スタイルシート
    テーマ:焼きたてパンの温かさ(クリーム×小麦色×バター色)
    ============================================ */
@@ -148,4 +151,116 @@ body{
   .lesson .menu{ font-size:9px; }
   .lesson .seats{ font-size:8.5px; }
   .cal-nav h2{ font-size:17px; }
+}
+
+/* ============================================
+   ステップ2で追加:予約フォーム・確認・完了パネル
+   ============================================ */
+
+.hide{ display:none !important; }
+
+.panel{
+  background:#fff;
+  border:1.5px solid var(--line);
+  border-radius:14px;
+  box-shadow:0 8px 20px rgba(138,109,75,.10);
+  padding:18px 16px;
+  margin-top:18px;
+  animation:panelIn .4s ease;
+}
+@keyframes panelIn{
+  from{ opacity:0; transform:translateY(12px); }
+  to{ opacity:1; transform:none; }
+}
+.panel-title{
+  font-size:16px; margin:0 0 12px;
+  padding-left:9px; border-left:5px solid var(--crust);
+  letter-spacing:.08em;
+}
+.panel-title.center{ text-align:center; border:none; padding:0; }
+
+/* 選択中レッスンの表示 */
+.sel-summary{
+  background:#fdf3e2;
+  border:1.5px solid #f0d5a8;
+  border-radius:10px;
+  padding:10px 13px;
+  font-size:14px; font-weight:bold;
+  color:#a86a14;
+  margin-bottom:14px;
+  line-height:1.7;
+}
+
+/* 選択中のレッスン札を目立たせる */
+.lesson.selected{
+  outline:2.5px solid var(--crust);
+  outline-offset:1px;
+}
+
+/* ---------- フォーム部品 ---------- */
+.field{ margin-bottom:13px; }
+.field label{
+  display:block; font-size:12.5px; font-weight:bold;
+  margin-bottom:5px;
+}
+.req{
+  display:inline-block; background:#c9403a; color:#fff;
+  font-size:9.5px; padding:1px 7px; border-radius:6px;
+  margin-left:6px; vertical-align:middle;
+}
+.field input, .field select, .field textarea{
+  width:100%;
+  font-family:inherit; font-size:15px;
+  padding:11px 10px;
+  border:1.5px solid var(--line);
+  border-radius:9px;
+  background:#fff; color:var(--wheat);
+}
+.field input:focus, .field select:focus, .field textarea:focus{
+  outline:none; border-color:var(--crust);
+}
+.field input.ng, .field textarea.ng{ border-color:#c9403a; background:#fdf4f3; }
+.err{ color:#c9403a; font-size:11.5px; margin:4px 2px 0; min-height:1em; }
+.hint{ font-size:11px; color:#a58c6d; margin:4px 2px 0; }
+
+/* ---------- ボタン ---------- */
+.btn-main{
+  display:block; width:100%;
+  font-family:inherit; font-size:15.5px; font-weight:bold;
+  color:#fff; background:var(--crust);
+  border:none; border-radius:11px;
+  padding:14px; margin-top:6px;
+  cursor:pointer; box-shadow:0 4px 0 #a1723f;
+  transition:.15s; letter-spacing:.06em;
+}
+.btn-main:active{ transform:translateY(3px); box-shadow:none; }
+.btn-sub{
+  display:block; width:100%;
+  font-family:inherit; font-size:13px;
+  color:#a58c6d; background:#fff;
+  border:1.5px solid var(--line); border-radius:11px;
+  padding:11px; margin-top:9px;
+  cursor:pointer; transition:.15s;
+}
+.btn-sub:active{ transform:translateY(2px); }
+
+/* ---------- 確認テーブル ---------- */
+.conf-table{
+  width:100%; border-collapse:collapse; font-size:13.5px;
+  margin-bottom:10px;
+}
+.conf-table th, .conf-table td{
+  border:1px solid var(--line);
+  padding:9px 10px; text-align:left; line-height:1.7;
+}
+.conf-table th{
+  background:#f7efe1; width:36%;
+  font-weight:bold; white-space:nowrap;
+}
+
+/* ---------- 完了画面 ---------- */
+.done-mark{ text-align:center; font-size:44px; }
+.done-text{
+  text-align:center; font-size:13px; line-height:2.0;
+  color:#a58c6d;
 }
