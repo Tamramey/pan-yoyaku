@@ -1,192 +1,179 @@
 /* ============================================
    ★★★ 第3版 ★★★(この行が見えれば新しいJSです)
    --------------------------------------------
-   パン教室 予約フォーム
-   役割:カレンダーで選んだレッスンを受け取り、
-        入力チェック → 確認画面 → 予約確定(サーバー送信)まで進める
+   パン教室 予約カレンダー
+   役割:レッスンデータをもとに月間カレンダーを描画し、
+        残席のあるレッスンをクリックできるようにする
    ============================================ */
 
-/* いま選択中のレッスン情報を覚えておく箱 */
-let selected = null;        /* { key, menu, seats, dateText } */
-let selectedTag = null;     /* 選択中のレッスン札(見た目の強調用) */
-
 /* --------------------------------------------
-   ① カレンダーから呼ばれる:レッスン選択
+   ① レッスンデータ(ステップ3から:サーバー取得方式)
+   本番では api/lessons.php から最新の残席を取得します。
+   ローカル(file://)で開いている時はサーバーがないので、
+   下のFALLBACK(予備データ)で表示だけ動くようにしています。
    -------------------------------------------- */
-function selectLesson(key, lesson, tagEl){
-  /* "2026-07-25" を分解して日付の文言を作る */
-  const [y, m, d] = key.split("-").map(Number);
-  const w = ["日","月","火","水","木","金","土"][new Date(y, m-1, d).getDay()];
-  const dateText = y + "年" + m + "月" + d + "日(" + w + ")";
+let LESSONS = {};   /* ここにサーバーからのデータが入る */
 
-  selected = { key, menu: lesson.menu, seats: lesson.seats, dateText };
+const LESSONS_FALLBACK = {
+  "2026-07-25": { menu: "クロワッサン",   seats: 2 },
+  "2026-07-26": { menu: "食パン",         seats: 0 },
+  "2026-07-28": { menu: "ベーグル",       seats: 3 },
+  "2026-07-30": { menu: "メロンパン",     seats: 1 },
+  "2026-08-02": { menu: "バゲット",       seats: 4 },
+  "2026-08-05": { menu: "シナモンロール", seats: 2 },
+  "2026-08-08": { menu: "食パン",         seats: 3 },
+  "2026-08-11": { menu: "クロワッサン",   seats: 0 },
+  "2026-08-19": { menu: "カンパーニュ",   seats: 5 },
+  "2026-08-23": { menu: "あんパン",       seats: 1 }
+};
 
-  /* 選択中の札に枠を付ける(前の選択は外す) */
-  if(selectedTag) selectedTag.classList.remove("selected");
-  selectedTag = tagEl;
-  selectedTag.classList.add("selected");
-
-  /* フォームに選択内容を表示 */
-  document.getElementById("selSummary").innerHTML =
-    "📅 " + dateText + "<br>🥖 「" + lesson.menu + "」レッスン(残" + lesson.seats + "席)";
-
-  /* 参加人数の選択肢を残席数に合わせて作る(上限4名まで) */
-  const numSel = document.getElementById("fNum");
-  numSel.innerHTML = "";
-  const max = Math.min(lesson.seats, 4);
-  for(let i = 1; i <= max; i++){
-    const op = document.createElement("option");
-    op.value = i;
-    op.textContent = i + "名";
-    numSel.appendChild(op);
-  }
-
-  /* 確認・完了画面が出ていたら隠し、フォームを表示 */
-  document.getElementById("confirm").classList.add("hide");
-  document.getElementById("done").classList.add("hide");
-  const booking = document.getElementById("booking");
-  booking.classList.remove("hide");
-
-  /* フォームの位置までするっとスクロール */
-  booking.scrollIntoView({ behavior: "smooth", block: "start" });
+function loadLessons(){
+  fetch("api/lessons.php")
+    .then(r => { if(!r.ok) throw new Error(); return r.json(); })
+    .then(data => { LESSONS = data; renderCalendar(); })
+    .catch(() => {
+      /* サーバーが無い環境(ローカル確認)では予備データで描画 */
+      LESSONS = LESSONS_FALLBACK;
+      renderCalendar();
+    });
 }
 
+/* 定員に対して「残りわずか」と表示する境目(1席以下) */
+const FEW_LIMIT = 1;
+
 /* --------------------------------------------
-   ② 入力チェック(バリデーション)
+   ② 表示中の年月を覚えておく変数
    -------------------------------------------- */
-function validate(){
-  let ok = true;
+const today = new Date();
+let viewYear  = today.getFullYear();
+let viewMonth = today.getMonth();   /* 0始まり(0=1月) */
 
-  const name = document.getElementById("fName");
-  const mail = document.getElementById("fMail");
-  const tel  = document.getElementById("fTel");
+/* --------------------------------------------
+   ③ カレンダーの描画
+   -------------------------------------------- */
+function renderCalendar(){
+  const cal = document.getElementById("calendar");
+  cal.innerHTML = "";
 
-  /* 前回のエラー表示をリセット */
-  [["eName", name], ["eMail", mail], ["eTel", tel]].forEach(([eid, el]) => {
-    document.getElementById(eid).textContent = "";
-    el.classList.remove("ng");
+  /* タイトル(例:2026年7月) */
+  document.getElementById("calTitle").textContent =
+    viewYear + "年" + (viewMonth + 1) + "月";
+
+  /* 曜日の行 */
+  const dowRow = document.createElement("div");
+  dowRow.className = "cal-row";
+  ["日","月","火","水","木","金","土"].forEach((d, i) => {
+    const el = document.createElement("div");
+    el.className = "dow" + (i === 0 ? " sun" : i === 6 ? " sat" : "");
+    el.textContent = d;
+    dowRow.appendChild(el);
   });
+  cal.appendChild(dowRow);
 
-  /* お名前:空でないこと */
-  if(name.value.trim() === ""){
-    document.getElementById("eName").textContent = "お名前を入力してください。";
-    name.classList.add("ng"); ok = false;
-  }
+  /* この月の1日の曜日と、月の日数を調べる */
+  const firstDow  = new Date(viewYear, viewMonth, 1).getDay();
+  const daysInMon = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const prevDays  = new Date(viewYear, viewMonth, 0).getDate();
 
-  /* メール:形式チェック(@と.を含む簡易判定) */
-  const mailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if(!mailRe.test(mail.value.trim())){
-    document.getElementById("eMail").textContent = "メールアドレスの形式が正しくないようです。";
-    mail.classList.add("ng"); ok = false;
-  }
+  /* 42マス(6週分)を順番に作る */
+  let dayRow = document.createElement("div");
+  dayRow.className = "cal-row";
 
-  /* 電話:数字を取り出して10〜11桁ならOK */
-  const digits = tel.value.replace(/[^0-9]/g, "");
-  if(digits.length < 10 || digits.length > 11){
-    document.getElementById("eTel").textContent = "お電話番号は数字10〜11桁で入力してください。";
-    tel.classList.add("ng"); ok = false;
-  }
+  for(let i = 0; i < 42; i++){
+    const cell = document.createElement("div");
+    cell.className = "cell";
 
-  return ok;
-}
+    let y = viewYear, m = viewMonth, d;
 
-/* --------------------------------------------
-   ③ フォーム送信 → 確認画面へ
-   -------------------------------------------- */
-document.getElementById("bookForm").addEventListener("submit", function(e){
-  e.preventDefault();               /* ページの再読み込みを止める */
-  if(!validate()) return;           /* エラーがあればここで終了 */
-
-  const rows = [
-    ["レッスン",   selected.dateText + "<br>「" + selected.menu + "」"],
-    ["お名前",     esc(document.getElementById("fName").value)],
-    ["メール",     esc(document.getElementById("fMail").value)],
-    ["お電話番号", esc(document.getElementById("fTel").value)],
-    ["参加人数",   document.getElementById("fNum").value + "名"],
-    ["ご要望",     esc(document.getElementById("fMemo").value) || "(なし)"]
-  ];
-  document.getElementById("confTable").innerHTML =
-    rows.map(r => "<tr><th>" + r[0] + "</th><td>" + r[1] + "</td></tr>").join("");
-
-  document.getElementById("booking").classList.add("hide");
-  const conf = document.getElementById("confirm");
-  conf.classList.remove("hide");
-  conf.scrollIntoView({ behavior: "smooth", block: "start" });
-});
-
-/* 入力値を安全に表示するための変換(セキュリティの基本) */
-function esc(s){
-  return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-}
-
-/* --------------------------------------------
-   ④ 確認画面のボタン
-   -------------------------------------------- */
-function backToForm(){
-  document.getElementById("confirm").classList.add("hide");
-  document.getElementById("booking").classList.remove("hide");
-}
-
-function finalizeBooking(){
-  /* ステップ3:予約データをサーバー(PHP)へ送信する */
-  const payload = {
-    key : selected.key,
-    name: document.getElementById("fName").value.trim(),
-    mail: document.getElementById("fMail").value.trim(),
-    tel : document.getElementById("fTel").value.trim(),
-    num : parseInt(document.getElementById("fNum").value),
-    memo: document.getElementById("fMemo").value.trim()
-  };
-
-  fetch("api/reserve.php", {
-    method : "POST",
-    headers: { "Content-Type": "application/json" },
-    body   : JSON.stringify(payload)
-  })
-  .then(r => r.json())
-  .then(res => {
-    if(!res.ok){
-      /* 満席・入力不備など、サーバーが断った場合 */
-      alert("ご予約を確定できませんでした:\n" + res.error);
-      backToForm();
-      return;
+    if(i < firstDow){
+      /* 前の月のマス */
+      d = prevDays - firstDow + 1 + i;
+      m = viewMonth - 1;
+      cell.classList.add("out");
+    }else if(i >= firstDow + daysInMon){
+      /* 次の月のマス */
+      d = i - (firstDow + daysInMon) + 1;
+      m = viewMonth + 1;
+      cell.classList.add("out");
+    }else{
+      /* 今月のマス */
+      d = i - firstDow + 1;
     }
 
-    /* 成功:画面側の残席も更新してカレンダーを描き直す */
-    if(LESSONS[selected.key]) LESSONS[selected.key].seats = res.seatsLeft;
-    renderCalendar();
+    /* 月をまたいだ場合の年の補正 */
+    const dt = new Date(y, m, d);
+    y = dt.getFullYear(); m = dt.getMonth(); d = dt.getDate();
 
-    /* 予約番号を完了画面に表示 */
-    document.getElementById("resId").textContent = res.id;
+    /* 曜日の色分けクラス */
+    if(dt.getDay() === 0) cell.classList.add("sun");
+    if(dt.getDay() === 6) cell.classList.add("sat");
 
-    document.getElementById("confirm").classList.add("hide");
-    const done = document.getElementById("done");
-    done.classList.remove("hide");
-    done.scrollIntoView({ behavior: "smooth", block: "start" });
-  })
-  .catch(() => {
-    alert(
-      "サーバーに接続できませんでした。\n\n" +
-      "この送信機能はPHPが動くサーバー上でのみ動作します。\n" +
-      "(パソコンでファイルを直接開いている間は、ステップ2までの動きになります)"
-    );
-  });
+    /* 今日の印 */
+    if(y === today.getFullYear() && m === today.getMonth() && d === today.getDate()){
+      cell.classList.add("today");
+    }
+
+    /* 日付の数字 */
+    const dn = document.createElement("span");
+    dn.className = "d";
+    dn.textContent = d;
+    cell.appendChild(dn);
+
+    /* この日にレッスンがあれば「札」を貼る */
+    const key = y + "-" + String(m + 1).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+    if(LESSONS[key]){
+      cell.appendChild(makeLessonTag(key, LESSONS[key], m + 1, d));
+    }
+
+    dayRow.appendChild(cell);
+
+    /* 7マスごとに行を確定して次の行へ */
+    if((i + 1) % 7 === 0){
+      cal.appendChild(dayRow);
+      dayRow = document.createElement("div");
+      dayRow.className = "cal-row";
+    }
+  }
 }
 
 /* --------------------------------------------
-   ⑤ キャンセル・最初に戻る
+   ④ レッスン札を作る(残席数で見た目と動きが変わる)
    -------------------------------------------- */
-function cancelBooking(){
-  document.getElementById("booking").classList.add("hide");
-  if(selectedTag) selectedTag.classList.remove("selected");
-  selected = null; selectedTag = null;
-  window.scrollTo({ top: 0, behavior: "smooth" });
+function makeLessonTag(key, lesson, month, day){
+  const tag = document.createElement("div");
+
+  if(lesson.seats <= 0){
+    /* 満席:グレーで押せない */
+    tag.className = "lesson full";
+    tag.innerHTML = '<span class="menu">' + lesson.menu + '</span><span class="seats">満席</span>';
+  }else{
+    /* 残席あり:残りわずかなら橙、余裕があれば緑 */
+    tag.className = "lesson " + (lesson.seats <= FEW_LIMIT ? "few" : "open");
+    tag.innerHTML =
+      '<span class="menu">' + lesson.menu + '</span>' +
+      '<span class="seats">残' + lesson.seats + '席</span>';
+
+    /* クリックで選択(ステップ2:予約フォームを開く。処理はform.js側) */
+    tag.addEventListener("click", function(){
+      selectLesson(key, lesson, tag);
+    });
+  }
+  return tag;
 }
 
-function resetAll(){
-  document.getElementById("done").classList.add("hide");
-  document.getElementById("bookForm").reset();
-  if(selectedTag) selectedTag.classList.remove("selected");
-  selected = null; selectedTag = null;
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
+/* --------------------------------------------
+   ⑤ 月の切り替えボタン
+   -------------------------------------------- */
+document.getElementById("prevBtn").addEventListener("click", function(){
+  viewMonth--;
+  if(viewMonth < 0){ viewMonth = 11; viewYear--; }
+  renderCalendar();
+});
+document.getElementById("nextBtn").addEventListener("click", function(){
+  viewMonth++;
+  if(viewMonth > 11){ viewMonth = 0; viewYear++; }
+  renderCalendar();
+});
+
+/* 最初の描画:サーバーからレッスンデータを取ってから描く */
+loadLessons();
